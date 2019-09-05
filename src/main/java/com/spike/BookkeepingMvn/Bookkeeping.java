@@ -12,6 +12,8 @@ import com.toedter.calendar.*;
 import java.io.*;
 
 public class Bookkeeping {
+	
+	File dbPath = new File("bookkeeping.db");
 
 	private final int insCompL = 100;
 	private final int insCompH = 30;
@@ -40,16 +42,51 @@ public class Bookkeeping {
 	
 	public static void main(String[] args) {
 		Bookkeeping app = new Bookkeeping();
-		app.connectDb();
+		app.checkDb();
 		app.buildGui();
 	}
 	
+	private void checkDb() {
+		if(dbPath.exists()) {
+			connectDb();
+		}
+		else {
+			connectDb();
+			createDb();
+		}
+	}
+	
+	private void createDb() {
+		try {
+			Statement st = dbCon.createStatement();
+			
+			String query = 
+					"CREATE TABLE activity " +
+					"( " +
+					"operation_id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT, " +
+					"date DATE, " +
+					"amount INTEGER, " +
+					"current INTEGER, " +
+					"commentary VARCHAR(50))";
+			st.executeUpdate(query);
+			
+			query =
+					"INSERT INTO activity " +
+					"(date, amount, current, commentary) " +
+					"VALUES " +
+					"('0001-01-01', 0, 0, 'Starting row')";
+			st.executeUpdate(query);
+			st.close();	
+		}
+		catch(SQLException ex) {
+			ex.printStackTrace();
+		}
+	}
+	
 	private void connectDb() {
-		File dbPath = new File("bookkeeping.db");
 		
 		try {
-			Class.forName("org.sqlite.JDBC");
-			//dbCon = DriverManager.getConnection("jdbc:sqlite:bookkeeping.db");
+			//Class.forName("org.sqlite.JDBC");
 			dbCon = DriverManager.getConnection("jdbc:sqlite:" + dbPath);
 			System.out.println("Base is connected");
 		}
