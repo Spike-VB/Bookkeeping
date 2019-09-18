@@ -3,11 +3,11 @@
   <modelVersion>4.0.0</modelVersion>
 
   <groupId>com.spike</groupId>
-  <artifactId>BookkeepingMvn</artifactId>
+  <artifactId>Bookkeeping</artifactId>
   <version>0.0.1-SNAPSHOT</version>
   <packaging>jar</packaging>
 
-  <name>BookkeepingMvn</name>
+  <name>Bookkeeping</name>
   <url>http://maven.apache.org</url>
 
   <properties>

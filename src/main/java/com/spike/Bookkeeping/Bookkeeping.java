@@ -1,51 +1,97 @@
-package com.spike.BookkeepingMvn;
+package com.spike.Bookkeeping;
 
 import java.util.*;
-import java.sql.*;
-import javax.swing.*;
+//import java.sql.*;
+//import javax.swing.*;
 import javax.swing.event.*;
-import javax.swing.table.*;
-import java.awt.*;
-import java.awt.event.*;
-import javax.swing.border.*;
-import com.toedter.calendar.*;
-import java.io.*;
+//import javax.swing.table.*;
+//import java.awt.*;
+//import java.awt.event.*;
+//import javax.swing.border.*;
+//import com.toedter.calendar.*;
+//import java.io.*;
 
 public class Bookkeeping {
 	
-	File dbPath = new File("bookkeeping.db");
-
-	private final int insCompL = 100;
-	private final int insCompH = 30;
-	private final Dimension insCompDim = new Dimension(insCompL, insCompH);
-	private final int dateL = 150;
+	/*
+	File dbPath = new File("bookkeeping.db"); //+
+	private Connection dbCon; //+
 	
-	private JFrame frame;
-	private JPanel resultPanel = new JPanel(new GridLayout(1,0));
-	private JPanel sumPanel = new JPanel(new GridLayout(1,0));
+	private final int insCompL = 100; //+
+	private final int insCompH = 30; //+
+	private final Dimension insCompDim = new Dimension(insCompL, insCompH); //+
+	private final int dateL = 150; //+
 	
-	private JDateChooser dateChooser;
-	private JComboBox<String> operation;
-	private JTextField amount;
-	private JTextField commentary;
+	private JFrame frame; //+
+	private JPanel resultPanel = new JPanel(new GridLayout(1,0)); //+
+	private JPanel sumPanel = new JPanel(new GridLayout(1,0)); //+
 	
-	private JDateChooser fromDateChooser;
-	private JDateChooser toDateChooser;
+	private JDateChooser insertDateChooser; //+
+	private JComboBox<String> operation; //+
+	private JTextField amount; //+
+	private JTextField commentary; //+
 	
-	private JButton deleteButton;
-	private DeleteButtonListener delButtonListener;
+	private JDateChooser fromDateChooser; //+
+	private JDateChooser toDateChooser; //+
 	
-	private Vector<Integer> operationId = new Vector<Integer>();
-	private Vector<Vector<Object>> data;
+	private JButton deleteButton; //+
+	private DeleteButtonListener delButtonListener; //+
 	
-	private Connection dbCon;
+	private Vector<Integer> operationId = new Vector<Integer>(); //+
+	private Vector<Vector<Object>> data; //+
+	*/
+	
+	
+	DbAccess db;
+	Gui gui;
+	
 	
 	public static void main(String[] args) {
-		Bookkeeping app = new Bookkeeping();
-		app.checkDb();
-		app.buildGui();
+		Bookkeeping b = new Bookkeeping();
+		b.startApp();
 	}
 	
+	public void startApp() {
+		db = new DbAccess();
+		db.startDb();
+		
+		Gui gui = new Gui(this);
+		gui.buildGui();
+	}
+	
+	public void closeDb() {
+		db.closeDb();
+	}
+	
+	public void insertData(Calendar cal, int operation, String amount, String commentary) {
+		db.insertData(cal, operation, amount, commentary);
+	}
+	
+	public void deleteRow(int row) {
+		db.deleteRow(row);
+	}
+	
+	public Vector<Vector<Object>> fillPeriodResults(Calendar fromCal, Calendar toCal) {
+		return db.fillPeriodResults(fromCal, toCal);
+	}
+	
+	public String[][] fillSum(Calendar fromCal, Calendar toCal) {
+		return db.fillSum(fromCal, toCal);
+	}
+	
+	public void updateDate(TableModelEvent e) {
+		db.updateDate(e);
+	}
+	
+	public void updateAmount(TableModelEvent e) {
+		db.updateAmount(e);
+	}
+	
+	public void updateCommentary(TableModelEvent e) {
+		db.updateCommentary(e);
+	}
+	
+	/*
 	private void checkDb() {
 		if(dbPath.exists()) {
 			connectDb();
@@ -92,6 +138,14 @@ public class Bookkeeping {
 		}
 		catch(Exception ex) {
 			ex.printStackTrace();
+		}
+	}
+	
+	public void closeDb() {
+		try {
+			dbCon.close();
+		} catch (SQLException e) {
+			e.printStackTrace();
 		}
 	}
 	
@@ -145,9 +199,9 @@ public class Bookkeeping {
 		JPanel dataInsertPanel = new JPanel();
 		dataInsertPanel.setLayout(new FlowLayout(FlowLayout.CENTER, 30, 20));
 		
-		dateChooser = new JDateChooser(new JSpinnerDateEditor());
-		dateChooser.setDate(new java.util.Date());
-		dateChooser.setPreferredSize(new Dimension(dateL, insCompH));
+		insertDateChooser = new JDateChooser(new JSpinnerDateEditor());
+		insertDateChooser.setDate(new java.util.Date());
+		insertDateChooser.setPreferredSize(new Dimension(dateL, insCompH));
 		
 		String[] operations = {"income", "spending"};
 		operation = new JComboBox<String>(operations);
@@ -158,7 +212,7 @@ public class Bookkeeping {
 		commentary = new JTextField();
 		commentary.setPreferredSize(new Dimension(insCompL * 3, insCompH));
 		
-		dataInsertPanel.add(dateChooser);
+		dataInsertPanel.add(insertDateChooser);
 		dataInsertPanel.add(operation);
 		dataInsertPanel.add(amount);
 		dataInsertPanel.add(commentary);
@@ -176,6 +230,7 @@ public class Bookkeeping {
 		
 		return insertPanel;
 	}
+	
 	
 	private JPanel getChoicePanel() {
 		JPanel choicePanel = new JPanel();
@@ -295,52 +350,7 @@ public class Bookkeeping {
 		frame.setVisible(true);
 	}
 	
-	private Vector<Vector<Object>> fillPeriodResults() {
-		Vector<Object> tempData = new Vector<Object>();
-		Vector<Vector<Object>> dataList =  new Vector<Vector<Object>>();
-		operationId.clear();
-		
-		Calendar fromCal = fromDateChooser.getCalendar();
-		Calendar toCal = toDateChooser.getCalendar();
-		
-		String selectQuery = 
-				"SELECT * FROM activity " +
-				"WHERE date >= '" + calToDateString(fromCal) + "' " +
-				"AND date <= '" + calToDateString(toCal) + "' " + 
-				"ORDER BY date, operation_id";	
-		try {
-			Statement st = dbCon.createStatement();
-			ResultSet result = st.executeQuery(selectQuery);
-			
-			while(result.next()) {
-				int id = result.getInt("operation_id");
-				String date = result.getString("date");
-				String operation = result.getInt("amount") > 0 ? "income" : "spending";
-				int amount = Math.abs(result.getInt("amount"));
-				int current = result.getInt("current");
-				String commentary = result.getString("commentary");
-				
-				operationId.add(id);
-				tempData.add(date);
-				tempData.add(operation);
-				tempData.add(amount);
-				tempData.add(current);
-				tempData.add(commentary);
-				
-				dataList.add(new Vector<Object>(tempData));
-				
-				tempData.clear();
-			}
-			result.close();
-			st.close();
-		}
-		catch(Exception ex) {
-			ex.printStackTrace();
-		}
-		return dataList;
-	}
-	
-	private String[][] fillSum() {
+	private String[][] fillSum1() {
 		String[][] data = new String[1][3];
 		
 		Calendar fromCal = fromDateChooser.getCalendar();
@@ -351,16 +361,16 @@ public class Bookkeeping {
 			
 			String selectQuery = 
 					"SELECT SUM(amount) FROM activity " +
-					"WHERE date >= '" + calToDateString(fromCal) + "' " +
-					"AND date <= '" + calToDateString(toCal) + "' " + 
+					"WHERE date >= '" + DateUtil.calToDateString(fromCal) + "' " +
+					"AND date <= '" + DateUtil.calToDateString(toCal) + "' " + 
 					"AND amount >= 0";
 			ResultSet result = st.executeQuery(selectQuery);
 			data[0][0] = "" + result.getInt("SUM(amount)");
 			
 			selectQuery = 
 					"SELECT ABS(SUM(amount)) FROM activity " +
-					"WHERE date >= '" + calToDateString(fromCal) + "' " +
-					"AND date <= '" + calToDateString(toCal) + "' " + 
+					"WHERE date >= '" + DateUtil.calToDateString(fromCal) + "' " +
+					"AND date <= '" + DateUtil.calToDateString(toCal) + "' " + 
 					"AND amount < 0";
 			result = st.executeQuery(selectQuery);
 			data[0][1] = "" + result.getInt("ABS(SUM(amount))");
@@ -410,7 +420,7 @@ public class Bookkeeping {
 			
 			String query = 
 					"SELECT MAX(date) FROM activity " +
-					"WHERE date < '" + calToDateString(cal) + "'";
+					"WHERE date < '" + DateUtil.calToDateString(cal) + "'";
 			String minDate = commonSt.executeQuery(query).getString("MAX(date)");
 			
 			query = 
@@ -467,14 +477,14 @@ public class Bookkeeping {
 					"SELECT date FROM activity " +
 					"WHERE operation_id = " + id;
 
-			Calendar cal1 = dateStringToCal(st.executeQuery(dateQuery).getString("date"));
+			Calendar cal1 = DateUtil.dateStringToCal(st.executeQuery(dateQuery).getString("date"));
 			Calendar cal2 = (Calendar) data.get(e.getFirstRow()).get(0);
 			Calendar minCal = cal1.compareTo(cal2) < 0 ? cal1 : cal2;
 			
 			String updateQuery =
 					"UPDATE activity " +
 					"SET " +
-					"date = '" + calToDateString((Calendar) data.get(e.getFirstRow()).get(0)) + "' " +
+					"date = '" + DateUtil.calToDateString((Calendar) data.get(e.getFirstRow()).get(0)) + "' " +
 					"WHERE operation_id = " + id;
 			st.executeUpdate(updateQuery);
 			st.close();
@@ -502,7 +512,7 @@ public class Bookkeeping {
 		catch(Exception ex) {
 			ex.printStackTrace();
 		}
-		updateCurrentColumn(dateStringToCal((String) data.get(e.getFirstRow()).get(0)));
+		updateCurrentColumn(DateUtil.dateStringToCal((String) data.get(e.getFirstRow()).get(0)));
 	}
 	
 	private void updateCommentary(TableModelEvent e) {
@@ -523,7 +533,7 @@ public class Bookkeeping {
 	
 	public class InsertButtonListener implements ActionListener {
 		public void actionPerformed(ActionEvent ev) {
-			Calendar cal = dateChooser.getCalendar();
+			Calendar cal = insertDateChooser.getCalendar();
 			try {
 				int amountWithSign = (operation.getSelectedIndex() == 0 ? 
 						Integer.parseInt(amount.getText()) : (-1 * Integer.parseInt(amount.getText())));
@@ -533,7 +543,7 @@ public class Bookkeeping {
 						"INSERT INTO activity " +
 						"(date, amount, commentary) " +
 						"VALUES " +
-						"('" + calToDateString(cal) + "', " + amountWithSign + ", " + "'" + commentary.getText() + "')";
+						"('" + DateUtil.calToDateString(cal) + "', " + amountWithSign + ", " + "'" + commentary.getText() + "')";
 			
 				st.executeUpdate(insertQuery);
 				st.close();
@@ -565,7 +575,7 @@ public class Bookkeeping {
 		public void setRow(int r) {
 			row = r;
 			id = operationId.get(row);
-			cal = dateStringToCal((String) data.get(row).get(0));
+			cal = DateUtil.dateStringToCal((String) data.get(row).get(0));
 		}
 		
 		public void actionPerformed(ActionEvent ev) {
@@ -648,7 +658,7 @@ public class Bookkeeping {
 		
 		public Component getTableCellEditorComponent(JTable table, Object value, boolean isSelected, int row, int column) {
 			chooser.setDateFormatString("yyyy, MMM, dd");
-			chooser.setCalendar(dateStringToCal((String) value));
+			chooser.setCalendar(DateUtil.dateStringToCal((String) value));
 			return chooser;
 		}
 	}
@@ -672,4 +682,5 @@ public class Bookkeeping {
 			return new JButton("Del");
 		}
 	}
+	*/
 }
