@@ -1,12 +1,10 @@
 package com.spike.Bookkeeping;
 
 import java.awt.*;
-import java.awt.event.*;
 import java.util.*;
 
 import javax.swing.*;
 import javax.swing.border.*;
-import javax.swing.event.*;
 import javax.swing.table.*;
 
 import com.toedter.calendar.*;
@@ -32,11 +30,24 @@ public class Gui {
 	private JDateChooser fromDateChooser;
 	private JDateChooser toDateChooser;
 	
-	private JButton deleteButton;
-	private DeleteButtonListener delButtonListener;
-	
 	public Gui(Bookkeeping b) {
 		bookkeeping = b;
+	}
+	
+	public Calendar getInsertDateCal() {
+		return insertDateChooser.getCalendar();
+	}
+	
+	public int getOperation() {
+		return operation.getSelectedIndex();
+	}
+	
+	public int getAmount() {
+		return Integer.parseInt(amount.getText());
+	}
+	
+	public String getCommentary() {
+		return commentary.getText();
 	}
 	
 	public void buildGui() {
@@ -62,6 +73,7 @@ public class Gui {
 		frame.setContentPane(mainPanel);
 		frame.setVisible(true);
 	}
+	
 	
 	private JPanel getInsertPanel() {
 		JPanel insertPanel = new JPanel();
@@ -110,7 +122,7 @@ public class Gui {
 		JPanel insertButtonPanel = new JPanel();
 		insertButtonPanel.setLayout(new FlowLayout(FlowLayout.CENTER));
 		JButton insertButton = new JButton("Insert");
-		insertButton.addActionListener(new InsertButtonListener());
+		insertButton.addActionListener(new InsertButtonListener(bookkeeping, this));
 		insertButton.setPreferredSize(new Dimension(740, insCompH));
 		insertButtonPanel.add(insertButton);
 		
@@ -142,7 +154,7 @@ public class Gui {
 		Label toDateLabel = new Label("to");
 		
 		JButton showButton = new JButton("Show results");
-		showButton.addActionListener(new ShowButtonListener());
+		showButton.addActionListener(new ShowButtonListener(this));
 		showButton.setPreferredSize(new Dimension(dateL, insCompH));
 		
 		choicePanel.add(fromDateLabel);
@@ -164,6 +176,10 @@ public class Gui {
 		headers.add("Delete");
 		Vector<Vector<Object>> data = bookkeeping.fillPeriodResults(fromDateChooser.getCalendar(), toDateChooser.getCalendar());
 		
+		final JButton deleteButton = new JButton();
+		final DeleteButtonListener delButtonListener = new DeleteButtonListener(bookkeeping, this);
+		deleteButton.addActionListener(delButtonListener);
+		
 		@SuppressWarnings("serial")
 		JTable table = new JTable(data, headers) {
 			
@@ -180,7 +196,7 @@ public class Gui {
 				else if(modelColumn == 1)
 	                return (TableCellEditor) new DefaultCellEditor(new JComboBox<String>(operations));
 				else if(modelColumn == 5)
-					return (TableCellEditor) new TableRowRemover();
+					return (TableCellEditor) new TableRowRemover(deleteButton, delButtonListener);
 	            else
 	                return super.getCellEditor(row, column);
 			}
@@ -189,7 +205,7 @@ public class Gui {
 				int modelColumn = convertColumnIndexToModel(column);
 				
 				if(modelColumn == 5)
-					return (TableCellRenderer) new TableButtonRenderer();
+					return (TableCellRenderer) new TableDelButtonRenderer();
 				else
 					return super.getCellRenderer(row, column);
 			}
@@ -199,14 +215,10 @@ public class Gui {
 		table.getColumnModel().getColumn(4).setPreferredWidth(500);
 		table.getColumnModel().getColumn(5).setPreferredWidth(40);
 		table.setFillsViewportHeight(true);
-		table.getModel().addTableModelListener(new resultTableListener());
+		table.getModel().addTableModelListener(new ResultTableListener(bookkeeping, this));
 		
 		JScrollPane scrollPane = new JScrollPane(table);
 		resultPanel.add(scrollPane);
-		
-		deleteButton = new JButton();
-		delButtonListener = new DeleteButtonListener();
-		deleteButton.addActionListener(delButtonListener);
 	}
 	
 	private void createSumPanel() {
@@ -229,94 +241,11 @@ public class Gui {
 		sumPanel.setPreferredSize(new Dimension(0, 40));
 	}
 	
-	private void updateResults() {
+	public void updateResults() {
 		resultPanel.removeAll();
 		sumPanel.removeAll();
 		createPeriodResultPanel();
 		createSumPanel();
 		frame.revalidate();
-	}
-	
-	private class InsertButtonListener implements ActionListener {
-		public void actionPerformed(ActionEvent ev) {
-			bookkeeping.insertData(insertDateChooser.getCalendar(), operation.getSelectedIndex(), amount.getText(), commentary.getText());
-			updateResults();
-		}
-	}
-	
-	private class ShowButtonListener implements ActionListener {
-		public void actionPerformed(ActionEvent ev) {
-			updateResults();
-		}
-	}
-	
-	public class DeleteButtonListener implements ActionListener {	
-		
-		private int row;
-		
-		public void setRow(int r) {
-			row = r;
-		}
-		
-		public void actionPerformed(ActionEvent ev) {
-			bookkeeping.deleteRow(row);
-			updateResults();
-		}
-	}
-	
-	public class resultTableListener implements TableModelListener {
-
-		public void tableChanged(TableModelEvent e) {
-			switch(e.getColumn()) {
-				case 0:
-					bookkeeping.updateDate(e);
-					break;
-				case 1:
-					bookkeeping.updateAmount(e);
-					break;
-				case 2:
-					bookkeeping.updateAmount(e);
-					break;
-				case 4:
-					bookkeeping.updateCommentary(e);
-					break;
-			}
-			updateResults();
-		}
-	}
-	
-	@SuppressWarnings("serial")
-	public class TableDateEditor extends AbstractCellEditor implements TableCellEditor {
-		JDateChooser chooser = new JDateChooser(new JSpinnerDateEditor());
-		
-		public Object getCellEditorValue() {
-	        return chooser.getCalendar();
-	    }
-		
-		public Component getTableCellEditorComponent(JTable table, Object value, boolean isSelected, int row, int column) {
-			chooser.setDateFormatString("yyyy, MMM, dd");
-			chooser.setCalendar(DateUtil.dateStringToCal((String) value));
-			return chooser;
-		}
-	}
-	
-	@SuppressWarnings("serial")
-	public class TableRowRemover extends AbstractCellEditor implements TableCellEditor {
-
-		public Object getCellEditorValue() {
-			return true;
-		}
-		
-		public Component getTableCellEditorComponent(JTable table, Object value, boolean isSelected, int row, int column) {
-			delButtonListener.setRow(row);
-			return deleteButton;
-		}
-	}
-	
-	public class TableButtonRenderer implements TableCellRenderer {
-
-		public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected, boolean hasFocus, int row, int column) {
-			return new JButton("Del");
-		}
 	}
 }

@@ -69,10 +69,10 @@ public class DbAccess {
 		}
 	}
 	
-	public void insertData(Calendar cal, int operation, String amount, String commentary) {
+	public void insertData(Calendar cal, int operation, int amount, String commentary) {
 		try {
 			int amountWithSign = (operation == 0 ? 
-					Integer.parseInt(amount) : (-1 * Integer.parseInt(amount)));
+					amount : (-1 * amount));
 			Statement st = dbCon.createStatement();
 			
 			String insertQuery = 
