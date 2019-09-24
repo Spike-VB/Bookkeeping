@@ -58,14 +58,13 @@ public class Gui {
 
 		JPanel mainPanel = new JPanel();
 		mainPanel.setLayout(new BorderLayout());
-		JPanel insertPanel = getInsertPanel();
-		JPanel choicePanel = getChoicePanel();
+		mainPanel.add(BorderLayout.SOUTH, getInsertPanel());
+		mainPanel.add(BorderLayout.NORTH, getChoicePanel());
+		
 		createPeriodResultPanel();
 		createSumPanel();
-		JPanel outputPanel = new JPanel(new BorderLayout());
 		
-		mainPanel.add(BorderLayout.SOUTH, insertPanel);
-		mainPanel.add(BorderLayout.NORTH, choicePanel);
+		JPanel outputPanel = new JPanel(new BorderLayout());
 		outputPanel.add(BorderLayout.CENTER, resultPanel);
 		outputPanel.add(BorderLayout.SOUTH, sumPanel);
 		mainPanel.add(BorderLayout.CENTER, outputPanel);

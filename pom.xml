@@ -53,7 +53,7 @@
   					<archive>
   						<manifest>
   							<mainClass>
-  								com.spike.BookkeepingMvn.Bookkeeping
+  								com.spike.Bookkeeping.Bookkeeping
   							</mainClass>
   						</manifest>
   					</archive>
